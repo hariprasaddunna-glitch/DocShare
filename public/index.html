@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DocShare</title>
+<style>body{font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:16px}input,button{width:100%;padding:10px;margin:6px 0;box-sizing:border-box;font-size:16px}
+.tabs{display:flex;gap:8px}.tabs button{flex:1}.on{background:#1f3864;color:#fff}.hide{display:none}.r{display:flex;gap:8px;align-items:center;border-bottom:1px solid #ddd;padding:6px 0}
+.r form{display:flex;gap:4px}.r input{width:80px;margin:0}.r button{width:auto;margin:0}#m{color:#b00;min-height:1.2em}</style></head><body>
+<h2>DocShare</h2><div class="tabs"><button id="tu" class="on">Upload</button><button id="td">Download</button></div>
+<div id="u"><input id="name" placeholder="Name"><input id="phone" placeholder="Phone number" inputmode="tel">
+<input id="pin" type="password" placeholder="Set a PIN (min 4) to protect the file"><input id="file" type="file">
+<button id="go">Upload (max 100 MB)</button><progress id="pg" class="hide" max="100" style="width:100%"></progress></div>
+<div id="d" class="hide"><input id="q" placeholder="Search by phone number or name"><button id="sb">Search</button><div id="res"></div></div><p id="m"></p>
+<script>
+const $=i=>document.getElementById(i),m=t=>$('m').textContent=t;
+function tab(x){$('u').classList.toggle('hide',x);$('d').classList.toggle('hide',!x);$('tu').classList.toggle('on',!x);$('td').classList.toggle('on',x);m('')}
+$('tu').onclick=()=>tab(false);$('td').onclick=()=>tab(true);
+$('go').onclick=()=>{const f=$('file').files[0];if(!f)return m('Choose a file');if(f.size>100*1024*1024)return m('File is larger than 100 MB');
+ const fd=new FormData();fd.append('name',$('name').value);fd.append('phone',$('phone').value);fd.append('pin',$('pin').value);fd.append('file',f);
+ const x=new XMLHttpRequest();x.open('POST','/api/upload');$('pg').classList.remove('hide');
+ x.upload.onprogress=e=>$('pg').value=e.loaded/e.total*100;
+ x.onload=()=>{$('pg').classList.add('hide');let r={};try{r=JSON.parse(x.responseText)}catch{}m(x.status==200?'Uploaded! Remember your PIN.':(r.error||'Upload failed'))};
+ x.onerror=()=>m('Network error');x.send(fd)};
+$('sb').onclick=async()=>{const r=await(await fetch('/api/search?q='+encodeURIComponent($('q').value))).json();
+ $('res').textContent=r.length?'':'No files found (type at least 4 characters)';
+ r.forEach(f=>{const d=document.createElement('div');d.className='r';
+  d.innerHTML='<span style="flex:1"></span><form method="post" action="/api/download"><input type="hidden" name="id" value="'+f.id+'"><input name="pin" type="password" placeholder="PIN" required><button>Get</button></form>';
+  d.firstChild.textContent=f.filename+' ('+(f.size/1048576).toFixed(1)+' MB, '+f.created.slice(0,10)+')';$('res').appendChild(d)})};
+</script></body></html>
